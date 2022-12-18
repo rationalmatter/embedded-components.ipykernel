@@ -60,7 +60,7 @@ with open(pjoin(here, name, '_version.py')) as f:
 
 current_version = version_ns['__version__']
 
-loose_pep440re = re.compile(r'^(\d+)\.(\d+)\.(\d+((a|b|rc)\d+)?)(\.post\d+)?(\.dev\d*)?$')
+loose_pep440re = re.compile(r'^(\d+)\.(\d+)\.(\d+((a|b|rc)\d+)?)(\.post\d+)?(\.dev\d*)?(\+juno)?$')
 if not loose_pep440re.match(current_version):
     raise ValueError("Version number '%s' is not valid (should match [N!]N(.N)*[{a|b|rc}N][.postN][.devN])" % current_version)
 

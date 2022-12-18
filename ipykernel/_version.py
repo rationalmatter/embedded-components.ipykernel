@@ -14,3 +14,5 @@ if len(version_info) > 4:
 
 kernel_protocol_version_info = (5, 3)
 kernel_protocol_version = '%s.%s' % kernel_protocol_version_info
+
+__version__ = __version__+'+juno'

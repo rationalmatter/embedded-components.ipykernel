@@ -186,7 +186,8 @@ def configure_inline_support(shell, backend):
         except ValueError:
             pass
         if hasattr(shell, '_saved_rcParams'):
-            matplotlib.rcParams.update(shell._saved_rcParams)
+            # No need to restore parameters, as those are actually correct now. This patch can be removed when we move to ipykernel 6.0+, as it doesn't come with its own matplotlib_inline module, and instead just uses the one provided in the app.
+            # matplotlib.rcParams.update(shell._saved_rcParams)
             del shell._saved_rcParams
         new_backend_name = "other"
 

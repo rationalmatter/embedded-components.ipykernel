@@ -17,6 +17,7 @@ from tornado import ioloop
 import zmq
 from zmq.eventloop import ioloop as zmq_ioloop
 from zmq.eventloop.zmqstream import ZMQStream
+from zmq.utils.garbage import gc as zmq_garbage_collector
 
 from IPython.core.application import (
     BaseIPythonApplication, base_flags, base_aliases, catch_config_error
@@ -43,6 +44,8 @@ from jupyter_client.session import (
     Session, session_flags, session_aliases,
 )
 from .zmqshell import ZMQInteractiveShell
+
+import threading
 
 #-----------------------------------------------------------------------------
 # Flags and Aliases
@@ -563,9 +566,9 @@ class IPKernelApp(BaseIPythonApplication, InteractiveShellApp,
         self.init_pdb()
         self.init_blackhole()
         self.init_connection_file()
-        self.init_poller()
+        # self.init_poller()
         self.init_sockets()
-        self.init_heartbeat()
+        # self.init_heartbeat()
         # writing/displaying connection info must be *after* init_sockets/heartbeat
         self.write_connection_file()
         # Log connection info after writing connection file, so that the connection
@@ -573,7 +576,7 @@ class IPKernelApp(BaseIPythonApplication, InteractiveShellApp,
         self.log_connection_info()
         self.init_io()
         try:
-            self.init_signal()
+            pass #self.init_signal()
         except:
             # Catch exception when initializing signal fails, eg when running the
             # kernel on a separate thread
@@ -599,6 +602,7 @@ class IPKernelApp(BaseIPythonApplication, InteractiveShellApp,
             self.poller.start()
         self.kernel.start()
         self.io_loop = ioloop.IOLoop.current()
+        self.stop_now = False
         if self.trio_loop:
             from ipykernel.trio_runner import TrioRunner
             tr = TrioRunner()
@@ -608,11 +612,50 @@ class IPKernelApp(BaseIPythonApplication, InteractiveShellApp,
             except KeyboardInterrupt:
                 pass
         else:
-            try:
-                self.io_loop.start()
-            except KeyboardInterrupt:
-                pass
+            while not self.stop_now:
+                try:
+                    self.io_loop.start()
+                except KeyboardInterrupt:
+                    self.log.debug("KeyboardInterrupt caught in kernel application, ignoring.")
+            # Shutdown kernel
+            self.cleanup()
 
+    def stop(self):
+        self.stop_now = True
+        self.io_loop.stop()
+
+    def cleanup(self):
+        if hasattr(self.kernel, 'io_loop'):
+            self.kernel.do_shutdown(False)
+        self.kernel.iopub_thread.stop()
+        if hasattr(self, 'io_loop'):
+            self.io_loop.close(all_fds=True)
+
+        # Cleanup I/O
+        if sys.stdout is not None:
+            sys.stdout.flush()
+            sys.stdout.close()
+        sys.stdout = sys.__stdout__
+
+        if sys.stderr is not None:
+            sys.stderr.flush()
+            sys.stderr.close()
+        sys.stderr = sys.__stderr__
+
+        # Close sockets
+        self.shell_socket.close()
+        self.stdin_socket.close()
+        self.control_socket.close()
+        self.iopub_socket.close()
+        self.iopub_thread.stop()
+        zmq_garbage_collector.stop()
+        self.cleanup_connection_file()
+        # Make sure there are no leftover threads
+        for t in threading.enumerate():
+            if t != threading.current_thread():
+                print("Waiting for %s to finish..." % t.name)
+                t.join()
+                print("...Joined with %s successfully" % t.name)
 
 launch_new_instance = IPKernelApp.launch_instance
 

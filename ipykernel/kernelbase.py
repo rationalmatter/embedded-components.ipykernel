@@ -277,11 +277,13 @@ class Kernel(SingletonConfigurable):
     def pre_handler_hook(self):
         """Hook to execute before calling message handler"""
         # ensure default_int_handler during handler call
-        self.saved_sigint_handler = signal(SIGINT, default_int_handler)
+        # self.saved_sigint_handler = signal(SIGINT, default_int_handler)
+        pass
 
     def post_handler_hook(self):
         """Hook to execute after calling message handler"""
-        signal(SIGINT, self.saved_sigint_handler)
+        # signal(SIGINT, self.saved_sigint_handler)
+        pass
 
     def enter_eventloop(self):
         """enter eventloop"""

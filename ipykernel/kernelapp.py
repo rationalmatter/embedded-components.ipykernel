@@ -617,31 +617,32 @@ class IPKernelApp(BaseIPythonApplication, InteractiveShellApp,
                     self.io_loop.start()
                 except KeyboardInterrupt:
                     self.log.debug("KeyboardInterrupt caught in kernel application, ignoring.")
-            # Shutdown kernel
-            self.cleanup()
 
     def stop(self):
         self.stop_now = True
         self.io_loop.stop()
 
     def cleanup(self):
-        if hasattr(self.kernel, 'io_loop'):
+        try:
             self.kernel.do_shutdown(False)
+        except AttributeError:
+            pass # Kernel no longer has IOLoop attached
         self.kernel.iopub_thread.stop()
-        if hasattr(self, 'io_loop'):
+        try:
             self.io_loop.close(all_fds=True)
-
+        except AttributeError:
+            pass # This IPKernelApp no longer has IOLoop attached
+        except KeyError:
+            pass # IOLoop was already closed
         # Cleanup I/O
         if sys.stdout is not None:
             sys.stdout.flush()
             sys.stdout.close()
         sys.stdout = sys.__stdout__
-
         if sys.stderr is not None:
             sys.stderr.flush()
             sys.stderr.close()
         sys.stderr = sys.__stderr__
-
         # Close sockets
         self.shell_socket.close()
         self.stdin_socket.close()

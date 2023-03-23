@@ -56,6 +56,8 @@ except ImportError:
     # Deprecated since ipykernel 4.3.0
     from ipykernel.datapub import ZMQDataPublisher
 
+import junoapp
+
 #-----------------------------------------------------------------------------
 # Functions and classes
 #-----------------------------------------------------------------------------
@@ -646,8 +648,15 @@ class ZMQInteractiveShell(InteractiveShell):
         else:
             self.user_ns['_exit_code'] = system(self.var_expand(cmd, depth=1))
 
+    def system_juno_handler(self, cmd):
+        # Forward system commands to the native app:
+        junoapp.handle_system_cmd(cmd, get_connection_file())
+        # Display an error message in cell output:
+        print(' System commands are not supported in Juno (yet)', file=sys.stderr)
+
     # Ensure new system_piped implementation is used
-    system = system_piped
+    # system = system_piped
+    system = system_juno_handler
 
 
 InteractiveShellABC.register(ZMQInteractiveShell)
